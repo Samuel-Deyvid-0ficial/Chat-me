@@ -7,32 +7,15 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Segoe UI', sans-serif; background: #0d1117; color: white; height: 100vh; overflow: hidden; }
-        
-        #login-screen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #0d1117; display: flex; justify-content: center; align-items: center; z-index: 100;
-        }
-        .login-box {
-            background: #161b22; padding: 30px; border-radius: 15px;
-            border: 1px solid #30363d; text-align: center; width: 90%; max-width: 350px;
-        }
-        select, input {
-            width: 100%; padding: 12px; margin: 10px 0;
-            border-radius: 8px; border: 1px solid #30363d;
-            background: #0d1117; color: white; outline: none;
-        }
-        .btn-entrar {
-            width: 100%; padding: 12px; background: #238636;
-            color: white; border: none; border-radius: 8px;
-            cursor: pointer; font-weight: bold;
-        }
-
+        #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0d1117; display: flex; justify-content: center; align-items: center; z-index: 100; }
+        .login-box { background: #161b22; padding: 30px; border-radius: 15px; border: 1px solid #30363d; text-align: center; width: 90%; max-width: 350px; }
+        select, input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #30363d; background: #0d1117; color: white; outline: none; }
+        .btn-entrar { width: 100%; padding: 12px; background: #238636; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
         #chat-container { display: none; height: 100vh; flex-direction: column; }
         header { padding: 15px; background: #161b22; border-bottom: 1px solid #30363d; text-align: center; font-weight: bold; color: #58a6ff; }
         #messages { list-style: none; padding: 20px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-        #messages li { padding: 10px 15px; border-radius: 15px; max-width: 80%; background: #21262d; border: 1px solid #30363d; position: relative; }
+        #messages li { padding: 10px 15px; border-radius: 15px; max-width: 80%; background: #21262d; border: 1px solid #30363d; }
         #messages li.me { align-self: flex-end; background: #238636; border-color: #2ea043; }
-        
         #form { display: flex; padding: 15px; background: #161b22; border-top: 1px solid #30363d; }
         #input { flex: 1; padding: 12px; border-radius: 20px; border: 1px solid #30363d; background: #0d1117; color: white; outline: none; }
         #send-btn { background: #238636; color: white; border: none; padding: 0 20px; border-radius: 20px; margin-left: 8px; cursor: pointer; }
@@ -76,7 +59,7 @@
                 document.getElementById('chat-container').style.display = 'flex';
                 document.getElementById('user-display').textContent = `Conectado como: ${currentUser}`;
             } else {
-                alert("Senha errada, tente novamente!");
+                alert("Senha errada!");
             }
         }
 
@@ -91,7 +74,7 @@
             messagesUl.scrollTop = messagesUl.scrollHeight;
         }
 
-        // Recebe o histórico do servidor assim que conecta
+        // Isso aqui é o que carrega o que está no banco:
         socket.on('previous messages', (msgs) => {
             messagesUl.innerHTML = '';
             msgs.forEach(renderMsg);

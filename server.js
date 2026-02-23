@@ -7,46 +7,48 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// IMPORTANTE: Nome da variável exatamente como está no seu Railway
-const MONGO_URI = process.env.URL_MONGO; 
+// Variável que você configurou no Railway
+const MONGO_URI = process.env.URL_MONGO;
 
+// Tenta conectar ao banco de dados
 if (MONGO_URI) {
     mongoose.connect(MONGO_URI)
-        .then(() => console.log("✅ Conectado ao MongoDB com sucesso!"))
-        .catch(err => console.log("❌ Erro de conexão:", err));
+        .then(() => console.log("✅ CONEXÃO ESTABELECIDA COM O MONGODB!"))
+        .catch(err => console.log("❌ ERRO AO CONECTAR AO BANCO: ", err));
+} else {
+    console.log("❌ VARIÁVEL 'URL_MONGO' NÃO ENCONTRADA NO RAILWAY!");
 }
 
-// Modelo para salvar as mensagens no banco
+// Estrutura das mensagens
 const Message = mongoose.model('Message', {
     sender: String,
     text: String,
-    timestamp: { type: Date, default: Date.now }
+    date: { type: Date, default: Date.now }
 });
 
 app.use(express.static(__dirname));
 
 io.on('connection', async (socket) => {
-    // Quando o usuário loga, o servidor busca as mensagens antigas
+    console.log("Novo usuário logado no chat.");
+
+    // BUSCA HISTÓRICO: O servidor busca as últimas 100 mensagens salvas
     try {
-        const history = await Message.find().sort({ timestamp: 1 }).limit(50);
+        const history = await Message.find().sort({ date: 1 }).limit(100);
         socket.emit('previous messages', history);
     } catch (err) {
-        console.log("Erro ao buscar histórico");
+        console.log("Erro ao carregar histórico: ", err);
     }
 
+    // RECEBE E SALVA: Quando alguém envia, o servidor salva no banco
     socket.on('chat message', async (data) => {
-        // Envia para todos na hora
-        io.emit('chat message', data);
+        io.emit('chat message', data); // Envia na hora para a tela
         
-        // Salva permanentemente no MongoDB
         try {
-            const newMessage = new Message({
-                sender: data.sender,
-                text: data.text
-            });
-            await newMessage.save();
+            const msg = new Message(data);
+            await msg.save(); // Salva permanentemente no MongoDB Atlas
+            console.log("Mensagem salva no banco com sucesso!");
         } catch (err) {
-            console.log("Erro ao salvar no banco");
+            console.log("Erro ao salvar mensagem: ", err);
         }
     });
 });
