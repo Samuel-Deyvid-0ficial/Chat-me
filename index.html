@@ -17,13 +17,14 @@
         /* CHAT */
         #chat-container { display: none; height: 100vh; flex-direction: column; }
         header { padding: 15px; background: #161b22; border-bottom: 1px solid #30363d; display: flex; justify-content: space-between; align-items: center; }
-        
-        /* BOTÃO DE EXCLUIR */
-        .btn-delete { background: #f85149; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: bold; }
+        .btn-delete { background: #f85149; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 11px; }
         
         #messages { list-style: none; padding: 20px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-        #messages li { padding: 10px 15px; border-radius: 15px; max-width: 80%; background: #21262d; border: 1px solid #30363d; }
+        #messages li { padding: 10px 15px; border-radius: 15px; max-width: 80%; background: #21262d; border: 1px solid #30363d; display: flex; flex-direction: column; }
         #messages li.me { align-self: flex-end; background: #238636; border-color: #2ea043; }
+        
+        /* ESTILO DO HORÁRIO */
+        .msg-time { font-size: 10px; color: #8b949e; align-self: flex-end; margin-top: 5px; }
         
         #form { display: flex; padding: 15px; background: #161b22; border-top: 1px solid #30363d; }
         #input { flex: 1; padding: 12px; border-radius: 20px; border: 1px solid #30363d; background: #0d1117; color: white; outline: none; }
@@ -73,9 +74,7 @@
         }
 
         function limparHistorico() {
-            if (confirm("Deseja apagar todas as mensagens para sempre?")) {
-                socket.emit('delete messages');
-            }
+            if (confirm("Apagar todas as mensagens?")) { socket.emit('delete messages'); }
         }
 
         const messagesUl = document.getElementById('messages');
@@ -83,7 +82,17 @@
         function renderMsg(data) {
             const li = document.createElement('li');
             const color = data.sender === 'Lulu' ? '#ff79c6' : '#8be9fd';
-            li.innerHTML = `<strong style="color: ${color};">${data.sender}:</strong> ${data.text}`;
+            
+            // FORMATAÇÃO DA HORA
+            const date = new Date(data.date);
+            const timeStr = date.getHours().toString().padStart(2, '0') + ":" + 
+                            date.getMinutes().toString().padStart(2, '0');
+
+            li.innerHTML = `
+                <div><strong style="color: ${color};">${data.sender}:</strong> ${data.text}</div>
+                <div class="msg-time">${timeStr}</div>
+            `;
+            
             if (data.sender === currentUser) li.classList.add('me');
             messagesUl.appendChild(li);
             messagesUl.scrollTop = messagesUl.scrollHeight;
@@ -95,11 +104,7 @@
         });
 
         socket.on('chat message', renderMsg);
-
-        // Limpa a tela de todos quando o comando vem do servidor
-        socket.on('clear screen', () => {
-            messagesUl.innerHTML = '';
-        });
+        socket.on('clear screen', () => { messagesUl.innerHTML = ''; });
 
         document.getElementById('form').addEventListener('submit', (e) => {
             e.preventDefault();

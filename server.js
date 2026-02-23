@@ -7,7 +7,6 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Certifique-se de que no Railway o nome agora é MONGO_URL
 const MONGO_URI = process.env.MONGO_URL;
 
 if (MONGO_URI) {
@@ -25,7 +24,6 @@ const Message = mongoose.model('Message', {
 app.use(express.static(__dirname));
 
 io.on('connection', async (socket) => {
-    // Envia o histórico ao conectar
     try {
         const history = await Message.find().sort({ date: 1 }).limit(100);
         socket.emit('previous messages', history);
@@ -33,25 +31,29 @@ io.on('connection', async (socket) => {
         console.log("Erro ao buscar histórico");
     }
 
-    // Recebe e salva mensagem
     socket.on('chat message', async (data) => {
-        io.emit('chat message', data);
+        const messageData = {
+            sender: data.sender,
+            text: data.text,
+            date: new Date() // Adiciona o horário do servidor
+        };
+        
+        io.emit('chat message', messageData);
+        
         try {
-            const msg = new Message(data);
+            const msg = new Message(messageData);
             await msg.save();
         } catch (err) {
             console.log("Erro ao salvar mensagem");
         }
     });
 
-    // FUNÇÃO PARA EXCLUIR TUDO
     socket.on('delete messages', async () => {
         try {
-            await Message.deleteMany({}); // Apaga tudo no MongoDB
-            io.emit('clear screen'); // Avisa todos os usuários para limparem a tela
-            console.log("Histórico apagado pelo usuário.");
+            await Message.deleteMany({});
+            io.emit('clear screen');
         } catch (err) {
-            console.log("Erro ao deletar mensagens");
+            console.log("Erro ao deletar");
         }
     });
 });
