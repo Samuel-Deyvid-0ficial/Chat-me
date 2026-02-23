@@ -3,49 +3,112 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Chat Fale Comigo</title>
+    <title>Chat Privado - Fale Comigo</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #0d1117; color: white; height: 100vh; display: flex; flex-direction: column; }
-        header { padding: 15px; background: #161b22; text-align: center; border-bottom: 1px solid #30363d; color: #58a6ff; font-weight: bold; }
-        #messages { list-style: none; padding: 15px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-        #messages li { padding: 10px 14px; border-radius: 15px; max-width: 80%; word-wrap: break-word; background: #21262d; border: 1px solid #30363d; font-size: 16px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0d1117; color: white; height: 100vh; overflow: hidden; }
+        
+        /* TELA DE LOGIN */
+        #login-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #0d1117; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 100;
+        }
+        .login-box {
+            background: #161b22; padding: 30px; border-radius: 15px;
+            border: 1px solid #30363d; text-align: center; width: 90%; max-width: 350px;
+        }
+        select, input {
+            width: 100%; padding: 12px; margin: 10px 0;
+            border-radius: 8px; border: 1px solid #30363d;
+            background: #0d1117; color: white; outline: none;
+        }
+        .btn-entrar {
+            width: 100%; padding: 12px; background: #238636;
+            color: white; border: none; border-radius: 8px;
+            cursor: pointer; font-weight: bold; margin-top: 10px;
+        }
+
+        /* CHAT (ESCONDIDO INICIALMENTE) */
+        #chat-container { display: none; height: 100vh; flex-direction: column; }
+        header { padding: 15px; background: #161b22; border-bottom: 1px solid #30363d; text-align: center; }
+        #messages { list-style: none; padding: 20px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        #messages li { padding: 10px 15px; border-radius: 15px; max-width: 80%; background: #21262d; border: 1px solid #30363d; }
         #messages li.me { align-self: flex-end; background: #238636; border-color: #2ea043; }
-        #form { display: flex; padding: 10px; background: #161b22; border-top: 1px solid #30363d; padding-bottom: env(safe-area-inset-bottom); }
-        #input { flex: 1; padding: 12px 15px; border: 1px solid #30363d; border-radius: 20px; background: #0d1117; color: white; outline: none; font-size: 16px; }
-        #btn { background: #238636; color: white; border: none; padding: 0 20px; border-radius: 20px; margin-left: 8px; cursor: pointer; font-weight: bold; }
+        #form { display: flex; padding: 15px; background: #161b22; border-top: 1px solid #30363d; }
+        #input { flex: 1; padding: 12px; border-radius: 20px; border: 1px solid #30363d; background: #0d1117; color: white; outline: none; }
+        #send-btn { background: #238636; color: white; border: none; padding: 0 20px; border-radius: 20px; margin-left: 8px; cursor: pointer; }
     </style>
 </head>
 <body>
-    <header>Fale Comigo ● Online</header>
-    <ul id="messages"></ul>
-    <form id="form">
-        <input id="input" autocomplete="off" placeholder="Digite uma mensagem..." />
-        <button id="btn">Enviar</button>
-    </form>
+
+    <div id="login-screen">
+        <div class="login-box">
+            <h2 style="color: #58a6ff; margin-bottom: 20px;">Fale Comigo ❤️</h2>
+            <label>Quem é você?</label>
+            <select id="user-select">
+                <option value="Lulu">Lulu</option>
+                <option value="Dominic">Dominic</option>
+            </select>
+            <input type="password" id="pass-input" placeholder="Digite a senha...">
+            <button class="btn-entrar" onclick="fazerLogin()">Entrar no Chat</button>
+            <p id="error-msg" style="color: #f85149; font-size: 12px; margin-top: 10px; display: none;">Senha incorreta!</p>
+        </div>
+    </div>
+
+    <div id="chat-container">
+        <header>
+            <span id="user-display" style="color: #58a6ff; font-weight: bold;"></span> ● Online
+        </header>
+        <ul id="messages"></ul>
+        <form id="form">
+            <input id="input" autocomplete="off" placeholder="Escreva para seu amor..." />
+            <button id="send-btn">Enviar</button>
+        </form>
+    </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
+        let currentUser = "";
+
+        function fazerLogin() {
+            const user = document.getElementById('user-select').value;
+            const pass = document.getElementById('pass-input').value;
+
+            if (pass === "amor") {
+                currentUser = user;
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('chat-container').style.display = 'flex';
+                document.getElementById('user-display').textContent = currentUser;
+            } else {
+                document.getElementById('error-msg').style.display = 'block';
+            }
+        }
+
         const messagesUl = document.getElementById('messages');
-        const myId = "User_" + Math.floor(Math.random() * 1000);
+        const form = document.getElementById('form');
+        const input = document.getElementById('input');
 
         function renderMsg(data) {
             const li = document.createElement('li');
-            li.textContent = `${data.sender}: ${data.text}`;
-            if (data.sender === myId) li.classList.add('me');
+            li.innerHTML = `<strong style="color: ${data.sender === 'Lulu' ? '#ff79c6' : '#8be9fd'};">${data.sender}:</strong> ${data.text}`;
+            if (data.sender === currentUser) li.classList.add('me');
             messagesUl.appendChild(li);
             messagesUl.scrollTop = messagesUl.scrollHeight;
         }
 
-        socket.on('previous messages', (msgs) => msgs.forEach(renderMsg));
+        socket.on('previous messages', (msgs) => {
+            messagesUl.innerHTML = '';
+            msgs.forEach(renderMsg);
+        });
+
         socket.on('chat message', renderMsg);
 
-        document.getElementById('form').addEventListener('submit', (e) => {
+        form.addEventListener('submit', (e) => {
             e.preventDefault();
-            const input = document.getElementById('input');
             if (input.value.trim()) {
-                socket.emit('chat message', { sender: myId, text: input.value });
+                socket.emit('chat message', { sender: currentUser, text: input.value });
                 input.value = '';
             }
         });
