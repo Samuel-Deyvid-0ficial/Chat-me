@@ -15,9 +15,12 @@ if (MONGO_URI) {
         .catch(err => console.log("❌ ERRO NO BANCO:", err.message));
 }
 
+// Modelo atualizado para suportar texto ou imagem
 const Message = mongoose.model('Message', {
     sender: String,
     text: String,
+    image: String, // Campo para a foto em Base64
+    type: { type: String, default: 'text' }, // 'text' ou 'image'
     date: { type: Date, default: Date.now }
 });
 
@@ -25,7 +28,7 @@ app.use(express.static(__dirname));
 
 io.on('connection', async (socket) => {
     try {
-        const history = await Message.find().sort({ date: 1 }).limit(100);
+        const history = await Message.find().sort({ date: 1 }).limit(50);
         socket.emit('previous messages', history);
     } catch (err) {
         console.log("Erro ao buscar histórico");
@@ -34,17 +37,23 @@ io.on('connection', async (socket) => {
     socket.on('chat message', async (data) => {
         const messageData = {
             sender: data.sender,
-            text: data.text,
-            date: new Date() // Adiciona o horário do servidor
+            text: data.text || "",
+            image: data.image || null,
+            type: data.type || 'text',
+            date: new Date()
         };
         
-        io.emit('chat message', messageData);
-        
-        try {
-            const msg = new Message(messageData);
-            await msg.save();
-        } catch (err) {
-            console.log("Erro ao salvar mensagem");
+        const msg = new Message(messageData);
+        await msg.save();
+        io.emit('chat message', msg);
+
+        // SE FOR IMAGEM: Configura para apagar do banco após 1 minuto (60000ms)
+        if (messageData.type === 'image') {
+            setTimeout(async () => {
+                await Message.findByIdAndDelete(msg._id);
+                io.emit('image expired', msg._id); // Avisa o chat para esconder a foto
+                console.log("📸 Foto temporária apagada do banco!");
+            }, 60000);
         }
     });
 
@@ -52,9 +61,7 @@ io.on('connection', async (socket) => {
         try {
             await Message.deleteMany({});
             io.emit('clear screen');
-        } catch (err) {
-            console.log("Erro ao deletar");
-        }
+        } catch (err) { console.log("Erro ao deletar"); }
     });
 });
 

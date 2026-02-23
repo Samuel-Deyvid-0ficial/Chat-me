@@ -8,27 +8,26 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Segoe UI', sans-serif; background: #0d1117; color: white; height: 100vh; overflow: hidden; }
         
-        /* LOGIN */
         #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0d1117; display: flex; justify-content: center; align-items: center; z-index: 100; }
         .login-box { background: #161b22; padding: 30px; border-radius: 15px; border: 1px solid #30363d; text-align: center; width: 90%; max-width: 350px; }
         select, input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #30363d; background: #0d1117; color: white; outline: none; }
         .btn-entrar { width: 100%; padding: 12px; background: #238636; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
 
-        /* CHAT */
         #chat-container { display: none; height: 100vh; flex-direction: column; }
         header { padding: 15px; background: #161b22; border-bottom: 1px solid #30363d; display: flex; justify-content: space-between; align-items: center; }
-        .btn-delete { background: #f85149; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 11px; }
         
-        #messages { list-style: none; padding: 20px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        #messages { list-style: none; padding: 20px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; scroll-behavior: smooth; }
         #messages li { padding: 10px 15px; border-radius: 15px; max-width: 80%; background: #21262d; border: 1px solid #30363d; display: flex; flex-direction: column; }
         #messages li.me { align-self: flex-end; background: #238636; border-color: #2ea043; }
         
-        /* ESTILO DO HORÁRIO */
+        .chat-img { max-width: 100%; border-radius: 10px; margin-top: 5px; border: 1px solid #30363d; }
         .msg-time { font-size: 10px; color: #8b949e; align-self: flex-end; margin-top: 5px; }
-        
-        #form { display: flex; padding: 15px; background: #161b22; border-top: 1px solid #30363d; }
+
+        #form { display: flex; padding: 15px; background: #161b22; border-top: 1px solid #30363d; align-items: center; }
         #input { flex: 1; padding: 12px; border-radius: 20px; border: 1px solid #30363d; background: #0d1117; color: white; outline: none; }
-        #send-btn { background: #238636; color: white; border: none; padding: 0 20px; border-radius: 20px; margin-left: 8px; cursor: pointer; }
+        .icon-btn { background: none; border: none; color: #8b949e; font-size: 20px; cursor: pointer; padding: 0 10px; }
+        #send-btn { background: #238636; color: white; border: none; padding: 10px 20px; border-radius: 20px; margin-left: 8px; cursor: pointer; font-weight: bold; }
+        #file-input { display: none; }
     </style>
 </head>
 <body>
@@ -48,10 +47,12 @@
     <div id="chat-container">
         <header>
             <span id="user-display" style="color: #58a6ff; font-weight: bold;"></span>
-            <button class="btn-delete" onclick="limparHistorico()">Limpar Tudo</button>
+            <button style="background:#f85149; color:white; border:none; padding:5px 10px; border-radius:5px; font-size:10px;" onclick="limparHistorico()">Limpar</button>
         </header>
         <ul id="messages"></ul>
         <form id="form">
+            <label for="file-input" class="icon-btn">📷</label>
+            <input type="file" id="file-input" accept="image/*">
             <input id="input" autocomplete="off" placeholder="Mensagem..." />
             <button id="send-btn">Enviar</button>
         </form>
@@ -61,6 +62,7 @@
     <script>
         const socket = io();
         let currentUser = "";
+        const messagesUl = document.getElementById('messages');
 
         function fazerLogin() {
             const user = document.getElementById('user-select').value;
@@ -70,50 +72,76 @@
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('chat-container').style.display = 'flex';
                 document.getElementById('user-display').textContent = `Olá, ${currentUser}!`;
+                scrollToBottom();
             } else { alert("Senha incorreta!"); }
         }
 
-        function limparHistorico() {
-            if (confirm("Apagar todas as mensagens?")) { socket.emit('delete messages'); }
+        function scrollToBottom() {
+            setTimeout(() => { messagesUl.scrollTop = messagesUl.scrollHeight; }, 100);
         }
-
-        const messagesUl = document.getElementById('messages');
 
         function renderMsg(data) {
             const li = document.createElement('li');
+            li.id = `msg-${data._id}`;
             const color = data.sender === 'Lulu' ? '#ff79c6' : '#8be9fd';
-            
-            // FORMATAÇÃO DA HORA
             const date = new Date(data.date);
-            const timeStr = date.getHours().toString().padStart(2, '0') + ":" + 
-                            date.getMinutes().toString().padStart(2, '0');
+            const timeStr = date.getHours().toString().padStart(2, '0') + ":" + date.getMinutes().toString().padStart(2, '0');
 
-            li.innerHTML = `
-                <div><strong style="color: ${color};">${data.sender}:</strong> ${data.text}</div>
-                <div class="msg-time">${timeStr}</div>
-            `;
+            let content = `<div><strong style="color: ${color};">${data.sender}:</strong> `;
+            if (data.type === 'image') {
+                content += `<br><img src="${data.image}" class="chat-img"><p style="font-size:9px; color:orange;">Esta foto sumirá em 1 min</p>`;
+            } else {
+                content += `${data.text}`;
+            }
+            content += `</div><div class="msg-time">${timeStr}</div>`;
             
+            li.innerHTML = content;
             if (data.sender === currentUser) li.classList.add('me');
             messagesUl.appendChild(li);
-            messagesUl.scrollTop = messagesUl.scrollHeight;
+            scrollToBottom();
         }
+
+        // Envio de Imagem
+        document.getElementById('file-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                socket.emit('chat message', { 
+                    sender: currentUser, 
+                    image: event.target.result, 
+                    type: 'image' 
+                });
+            };
+            reader.readAsDataURL(file);
+        });
 
         socket.on('previous messages', (msgs) => {
             messagesUl.innerHTML = '';
             msgs.forEach(renderMsg);
+            scrollToBottom();
         });
 
         socket.on('chat message', renderMsg);
+
+        // Remove a foto da tela quando ela expira no banco
+        socket.on('image expired', (id) => {
+            const el = document.getElementById(`msg-${id}`);
+            if (el) el.style.opacity = '0.3'; // Fica clarinho indicando que sumiu
+        });
+
         socket.on('clear screen', () => { messagesUl.innerHTML = ''; });
 
         document.getElementById('form').addEventListener('submit', (e) => {
             e.preventDefault();
             const input = document.getElementById('input');
             if (input.value.trim()) {
-                socket.emit('chat message', { sender: currentUser, text: input.value });
+                socket.emit('chat message', { sender: currentUser, text: input.value, type: 'text' });
                 input.value = '';
             }
         });
+
+        function limparHistorico() { if (confirm("Apagar tudo?")) socket.emit('delete messages'); }
     </script>
 </body>
 </html>
