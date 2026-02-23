@@ -7,19 +7,16 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Variável que você configurou no Railway
-const MONGO_URI = process.env.URL_MONGO;
+// USANDO O NOME PADRÃO MONGO_URL
+const MONGO_URI = process.env.MONGO_URL;
 
-// Tenta conectar ao banco de dados
 if (MONGO_URI) {
-    mongoose.connect(MONGO_URI)
-        .then(() => console.log("✅ CONEXÃO ESTABELECIDA COM O MONGODB!"))
-        .catch(err => console.log("❌ ERRO AO CONECTAR AO BANCO: ", err));
-} else {
-    console.log("❌ VARIÁVEL 'URL_MONGO' NÃO ENCONTRADA NO RAILWAY!");
+    // Adicionamos configurações para evitar o erro de Timeout do log
+    mongoose.connect(MONGO_URI, { serverSelectionTimeoutMS: 5000 })
+        .then(() => console.log("✅ BANCO CONECTADO COM SUCESSO!"))
+        .catch(err => console.log("❌ ERRO NO BANCO:", err.message));
 }
 
-// Estrutura das mensagens
 const Message = mongoose.model('Message', {
     sender: String,
     text: String,
@@ -29,31 +26,26 @@ const Message = mongoose.model('Message', {
 app.use(express.static(__dirname));
 
 io.on('connection', async (socket) => {
-    console.log("Novo usuário logado no chat.");
-
-    // BUSCA HISTÓRICO: O servidor busca as últimas 100 mensagens salvas
+    // Busca o histórico e envia para o usuário
     try {
         const history = await Message.find().sort({ date: 1 }).limit(100);
         socket.emit('previous messages', history);
+        console.log(`Enviadas ${history.length} mensagens de histórico.`);
     } catch (err) {
-        console.log("Erro ao carregar histórico: ", err);
+        console.log("Erro ao ler histórico:", err.message);
     }
 
-    // RECEBE E SALVA: Quando alguém envia, o servidor salva no banco
     socket.on('chat message', async (data) => {
-        io.emit('chat message', data); // Envia na hora para a tela
-        
+        io.emit('chat message', data);
         try {
             const msg = new Message(data);
-            await msg.save(); // Salva permanentemente no MongoDB Atlas
-            console.log("Mensagem salva no banco com sucesso!");
+            await msg.save();
+            console.log("Mensagem salva!");
         } catch (err) {
-            console.log("Erro ao salvar mensagem: ", err);
+            console.log("Erro ao salvar:", err.message);
         }
     });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => {
-    console.log(`Servidor rodando na porta ${PORT}`);
-});
+server.listen(PORT, '0.0.0.0', () => console.log(`Rodando na porta ${PORT}`));
