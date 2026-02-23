@@ -17,15 +17,15 @@
         header { padding: 15px; background: #161b22; border-bottom: 1px solid #30363d; display: flex; justify-content: space-between; align-items: center; }
         
         #messages { list-style: none; padding: 20px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; scroll-behavior: smooth; }
-        #messages li { padding: 10px 15px; border-radius: 15px; max-width: 80%; background: #21262d; border: 1px solid #30363d; display: flex; flex-direction: column; }
+        #messages li { padding: 10px 15px; border-radius: 15px; max-width: 85%; background: #21262d; border: 1px solid #30363d; display: flex; flex-direction: column; word-wrap: break-word; }
         #messages li.me { align-self: flex-end; background: #238636; border-color: #2ea043; }
         
-        .chat-img { max-width: 100%; border-radius: 10px; margin-top: 5px; border: 1px solid #30363d; }
+        .chat-img { max-width: 100%; border-radius: 10px; margin-top: 8px; display: block; }
         .msg-time { font-size: 10px; color: #8b949e; align-self: flex-end; margin-top: 5px; }
 
         #form { display: flex; padding: 15px; background: #161b22; border-top: 1px solid #30363d; align-items: center; }
         #input { flex: 1; padding: 12px; border-radius: 20px; border: 1px solid #30363d; background: #0d1117; color: white; outline: none; }
-        .icon-btn { background: none; border: none; color: #8b949e; font-size: 20px; cursor: pointer; padding: 0 10px; }
+        .icon-btn { font-size: 24px; cursor: pointer; padding: 0 10px; user-select: none; }
         #send-btn { background: #238636; color: white; border: none; padding: 10px 20px; border-radius: 20px; margin-left: 8px; cursor: pointer; font-weight: bold; }
         #file-input { display: none; }
     </style>
@@ -64,6 +64,10 @@
         let currentUser = "";
         const messagesUl = document.getElementById('messages');
 
+        function scrollToBottom() {
+            setTimeout(() => { messagesUl.scrollTop = messagesUl.scrollHeight; }, 200);
+        }
+
         function fazerLogin() {
             const user = document.getElementById('user-select').value;
             const pass = document.getElementById('pass-input').value;
@@ -76,10 +80,6 @@
             } else { alert("Senha incorreta!"); }
         }
 
-        function scrollToBottom() {
-            setTimeout(() => { messagesUl.scrollTop = messagesUl.scrollHeight; }, 100);
-        }
-
         function renderMsg(data) {
             const li = document.createElement('li');
             li.id = `msg-${data._id}`;
@@ -89,7 +89,7 @@
 
             let content = `<div><strong style="color: ${color};">${data.sender}:</strong> `;
             if (data.type === 'image') {
-                content += `<br><img src="${data.image}" class="chat-img"><p style="font-size:9px; color:orange;">Esta foto sumirá em 1 min</p>`;
+                content += `<br><img src="${data.image}" class="chat-img"><p style="font-size:9px; color:orange; margin-top:5px;">Sumiu em 1 min</p>`;
             } else {
                 content += `${data.text}`;
             }
@@ -101,10 +101,17 @@
             scrollToBottom();
         }
 
-        // Envio de Imagem
+        // ENVIO DE FOTO MELHORADO
         document.getElementById('file-input').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
+
+            // Alerta se a foto for muito grande
+            if (file.size > 8 * 1024 * 1024) { 
+                alert("A foto é muito pesada! Escolha uma menor."); 
+                return; 
+            }
+
             const reader = new FileReader();
             reader.onload = function(event) {
                 socket.emit('chat message', { 
@@ -114,6 +121,7 @@
                 });
             };
             reader.readAsDataURL(file);
+            e.target.value = ""; // Reseta o campo
         });
 
         socket.on('previous messages', (msgs) => {
@@ -124,10 +132,9 @@
 
         socket.on('chat message', renderMsg);
 
-        // Remove a foto da tela quando ela expira no banco
         socket.on('image expired', (id) => {
             const el = document.getElementById(`msg-${id}`);
-            if (el) el.style.opacity = '0.3'; // Fica clarinho indicando que sumiu
+            if (el) el.style.opacity = '0.2'; 
         });
 
         socket.on('clear screen', () => { messagesUl.innerHTML = ''; });
